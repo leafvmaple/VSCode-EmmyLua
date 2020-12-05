@@ -6,10 +6,10 @@ import { DebugProtocol } from "vscode-debugprotocol";
 import { StoppedEvent, StackFrame, Thread, Source, Handles, TerminatedEvent, InitializedEvent, Breakpoint, OutputEvent, Event } from "vscode-debugadapter";
 import { EmmyStack, IEmmyStackNode, EmmyVariable, IEmmyStackContext } from "./EmmyDebugData";
 import { readFileSync } from "fs";
-import { join, normalize } from "path";
+import { join, normalize, basename } from "path";
 
 interface EmmyDebugArguments extends DebugProtocol.AttachRequestArguments {
-	extensionPath: string;
+    extensionPath: string;
     sourcePaths: string[];
     host: string;
     port: number;
@@ -194,15 +194,12 @@ export class EmmyDebugSession extends DebugSession implements IEmmyStackContext 
             const stacks = this.breakNotify.stacks;
             for (let i = 0; i < stacks.length; i++) {
                 const stack = stacks[i];
-                let file = stack.file;
                 if (stack.line >= 0) {
-                    file = await this.findFile(stack.file);
+                    let file = basename(stack.file)
+                    let path = await this.findFile(file);
+                    let source = new Source(file, path);
+                    stackFrames.push(new StackFrame(stack.level, stack.functionName, source, stack.line));
                 }
-                else if (i < stacks.length - 1) {
-                    continue;
-                }
-                let source = new Source(stack.file, file);
-                stackFrames.push(new StackFrame(stack.level, stack.functionName, source, stack.line));
             }
             response.body = {
                 stackFrames: stackFrames,
